@@ -2,6 +2,8 @@ import json
 import numpy as np
 import array
 import struct
+import argparse
+import sys
 
 
 class NeuralNetwork:
@@ -294,7 +296,7 @@ def test_obj_from_input():
     ]
 
 
-def test():
+def test(test_data):
     nn = NeuralNetwork(input_size=31, hidden_size=64, output_size=2)
     nn.set_frombin("params.bin")
 
@@ -303,13 +305,166 @@ def test():
             return 0
         return 1
 
-    test = format_data(test_obj_from_input())
-    output = nn.feedforward(test[0])
-    ref = 0
+    output = nn.feedforward(test_data[0])
     for i in range(len(output)):
         print(
             f"Prediction: {'Accepted' if predict(output[i]) else 'Refused'} "
             f"({max(output[i] * 100):.5}%)"
         )
+
+
 if __name__ == "__main__":
-    test()
+    desc_txt = """Test your result at the piscine!
+
+Every parameter must be set in the precise specified order, as it is the same as the model was trained on.
+If you are not using the interactive mode, each missing value will be set to -1.
+You do not need to input anything for the projects you did not subscribe to.
+If you desire, you may put '-1' as a place holder value in such cases."""
+    parser = argparse.ArgumentParser(
+        prog="pisciNNe",
+        description=desc_txt,
+        formatter_class=argparse.RawTextHelpFormatter,
+        allow_abbrev=True,
+    )
+    parser.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="Use the interactive mode",
+    )
+    parser.add_argument(
+        "--level", type=float, help="Your level, as a float", default=0
+    )
+    parser.add_argument(
+        "--logtime",
+        type=float,
+        help="Your logtime in seconds (seconds = hours * 3600)",
+        default=0,
+    )
+    parser.add_argument(
+        "--skill",
+        nargs="*",
+        type=float,
+        help="Your skill levels, as floats, "
+        "in the order: ALGO RIGOR UNIX ADAPTATION",
+        default=[0, 0, 0, 0],
+        metavar="level",
+    )
+    parser.add_argument(
+        "--rushes",
+        nargs="*",
+        type=int,
+        default=[-1, -1, -1],
+        metavar="score",
+        help="Your scores to the rushes, from 0 to 125, "
+        "in the order: RUSH00 RUSH01 RUSH02",
+    )
+    parser.add_argument(
+        "--exams",
+        nargs="*",
+        type=int,
+        metavar="score",
+        help="Your scores to the exams, from 0 to 100, "
+        "in the order: EXAM00 EXAM01 EXAM02 FINALEXAM",
+        default=[-1, -1, -1, -1],
+    )
+    parser.add_argument(
+        "--shell",
+        nargs="*",
+        type=int,
+        metavar="score",
+        help="Your scores to the shell projects, from 0 to 100, "
+        "in the order: SHELL00 SHELL01",
+        default=[-1, -1],
+    )
+    parser.add_argument(
+        "--c",
+        nargs="*",
+        type=int,
+        metavar="score",
+        help="Your scores to the C projects, from 0 to 100, "
+        "in the order: C00 C01 C02 ... C11 C12 C13",
+        default=[-1] * 14,
+    )
+    parser.add_argument(
+        "--bsq",
+        type=int,
+        default=-1,
+        metavar="score",
+        help="Your score to the BSQ, from 0 to 100",
+    )
+
+    args = parser.parse_args()
+    if args.interactive:
+        test(format_data(test_obj_from_input()))
+        exit(0)
+    slvl: list[float] = args.skill
+    if len(slvl) < 4:
+        diff = 4 - len(slvl)
+        print(
+            f"[!] Warning, {diff} "
+            f"missing skill value{'s' if diff > 1 else ''} "
+            "have been defaulted to 0."
+        )
+        slvl += [0] * diff
+
+    rscores: list[float] = args.rushes
+    if len(rscores) < 3:
+        diff = 3 - len(rscores)
+        print(
+            f"[!] Warning, {diff} "
+            f"missing rush score{'s' if diff > 1 else ''} "
+            "have been defaulted to -1."
+        )
+        rscores += [-1] * diff
+
+    escores: list[float] = args.exams
+    if len(escores) < 4:
+        diff = 4 - len(escores)
+        print(
+            f"[!] Warning, {diff} "
+            f"missing exam score{'s' if diff > 1 else ''} "
+            "have been defaulted to -1."
+        )
+        escores += [-1] * diff
+
+    shscores: list[float] = args.shell
+    if len(shscores) < 2:
+        diff = 2 - len(shscores)
+        print(
+            f"[!] Warning, {diff} "
+            f"missing shell project score{'s' if diff > 1 else ''} "
+            "have been defaulted to -1."
+        )
+        shscores += [0] * diff
+
+    cscores: list[float] = args.c
+    if len(cscores) < 14:
+        diff = 14 - len(cscores)
+        print(
+            f"[!] Warning, {diff} "
+            f"missing c project score{'s' if diff > 1 else ''} "
+            "have been defaulted to -1."
+        )
+        cscores += [-1] * diff
+    print("[*] Data for prediction:")
+    print(f"[+] Level:\t{args.level:< 8.2f}")
+    print(f"[+] Logtime:\t{args.logtime:< 10.3f}s")
+    print("[+] Skills:\t" + "".join([f"{lvl:< 4.2f}" for lvl in slvl]))
+    print("[+] Rushes:\t" + "".join([f"{s:< 5}" for s in rscores]))
+    print("[+] Exams:\t" + "".join([f"{s:< 5}" for s in escores]))
+    print("[+] Shell:\t" + "".join([f"{s:< 5}" for s in shscores]))
+    print("[+] C Days:\t" + "".join([f"{s:< 5}" for s in cscores]))
+    print(f"[+] BSQ:\t{args.bsq:< 4}")
+
+    obj = [
+        {
+            "level": args.level,
+            "total_seconds": args.logtime,
+            "skills": slvl,
+            "rushes": rscores,
+            "exams": escores,
+            "projects": shscores + cscores + [args.bsq],
+        }
+    ]
+    test(format_data(obj))
